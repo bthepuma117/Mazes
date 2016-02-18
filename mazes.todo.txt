@@ -1,0 +1,13 @@
+TODO:
+1-fix or at least correctly document how rows and collumns are structured in 
+	the grid array---done
+	
+2-impliment more maze creation algorithms
+	--have binary tree method
+	--have sidewander
+
+3-impliment djikstras algorithm
+
+4-try to work with open cv and create images.
+
+5-port to c# and unity engine to create random maze levels
