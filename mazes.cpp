@@ -7,51 +7,118 @@
 *	opposite sides of maze are not connected
 */
 
+
 enum DIRECTION{NORTH=0,EAST=1,SOUTH=2,WEST=3};
 
 #include <iostream>
 #include <stdlib.h>
 #include <time.h>
 #include <string>
+
 using namespace std;
+
 
 class Cell
 {
-public:
-	int row,column;
+	friend class Map; 
+protected:
+	bool visited;
+	int row,column,distance; 
+	string display="   ";
+
 	Cell *surround[4];//keep track of neighbors
 	bool links[4]={false};//keep track of linked cells hashtable might be better
+
+public:
+	
+	
 	Cell()
 	{
-		;//TODO
+		visited=false;//TODO
 	}
 	Cell(int r,int c)
 	{
 		row=r;
 		column=c;
-
+		visited=false;
 	}
 	~Cell()
 	{
 		//nothing to do here
 		
 	}
+	void set_dist(int d)
+	{
+		distance = d;
+	}
+	int get_dist()
+	{
+		return distance;
+	}
+
+	void visit()
+	{
+		visited = true;
+	}
+
+	bool is_visited()
+	{
+		return visited;
+	}
+
 	bool is_at(int dir)
 	{
 		return surround[dir%4]==NULL;
 	}
+
 	void describe()
 	{
 		cout<<row<<" : "<<column<<endl;
 	}
+
 	void set_row(int r)
 	{
 		row=r;
 	}
+
 	void set_col(int c)
 	{
 		column=c;
 	}
+
+	int get_row()
+	{
+		return row;
+	}
+
+	int get_col()
+	{
+		return column;
+	}
+	Cell* get_shortest()
+	{
+		int small = INT_MAX;
+		int index=0;
+		for(int i=0; i<4; i++)
+		{
+			if(surround[i]!=NULL && links[i])
+			{
+				if(small > surround[i]->get_dist())
+				{
+					small = surround[i]->get_dist();
+					
+					index =i;
+				}
+			}
+			
+		}
+		return surround[index];
+	}
+	Cell* get_neighbor(int dir)
+	{
+		return surround[dir%4];
+	}
+
 /****************************************************************
 
    FUNCTION:   link
@@ -122,20 +189,99 @@ public:
 		return false;
 
 	}
-	void unlink_all()
+	Cell* get_next()
+	{
+		for(int i=0;i<4;i++)
+		{
+			if(surround[i]!=NULL && links[i] && !surround[i]->is_visited())
+			{
+				
+				return surround[i];
+
+			}
+		}
+		
+		return NULL;
+	}
+	void unlink_all()//only for reset !:o
 	{
 		for (int i=0; i<4; i++)
 		{
 			links[i]=false;
-		}
 
+		}
+		distance=0;
 	}
 	
 
 
 	};
+
+class stack
+{
+
+	typedef struct node 
+	{
+		node *next;
+		Cell *value;
+
+	} node;
+
+public:
+	int size;
+	node *head;
+	stack(Cell *start)
+	{
+		head = new node;
+		head->value=start;
+		head->next = NULL;
+		size=1;
+		start->visit();
+
+	}
+	~stack()
+	{
+		//clean up
+		while(head!=NULL)
+		{
+			pop();
+		}
+	}
+	void push(Cell *added)
+	{
+		node *temp=head;
+		head=new node;
+		head->next=temp;
+		head->value=added;
+		added->visit();
+		temp=NULL;
+		size++;
+
+	}
+	void pop()
+	{
+		node* temp=head->next;
+		delete head;//should work just fine with no issues
+		head= temp;
+		temp=NULL;
+		size--;
+
+	}
+	Cell* top()
+	{
+		return head->value;
+	}
+	int get_size()
+	{
+		return size;
+	}
+
+
+};
+
 class Map
 {
+	
 public:
 	int rows,columns;
 	Cell ** grid;
@@ -206,7 +352,7 @@ public:
 ****************************************************************/
 	void configure_cells()
 	{
-		cout<<"cell config"<<endl;
+		
 		for(int i=0;i<rows;i++)
 		{
 			for(int j=0;j<columns;j++)
@@ -343,7 +489,7 @@ public:
 			{
 				east_b= ((grid[j][t].is_linked(&grid[j][(t+1)%columns]))? " " : "|");
 				south_b=((grid[j][t].is_linked(&grid[(j+1)%rows][t]))? "   " : "---");
-				top+=body;
+				top+=grid[j][t].display;
 				top+=east_b;
 				bottom+=south_b;
 				bottom+="+";
@@ -356,6 +502,18 @@ public:
 
 
 	}
+
+	/****************************************************************
+
+   FUNCTION:   reset
+
+   ARGUMENTS:  none
+
+   RETURNS:    nothing
+
+   NOTES:     resets all the cells in the grid to be unlinked.
+   			  and unmake the maze
+****************************************************************/
 	void reset()
 	{
 		for(int i =0; i<rows; i++)
@@ -369,9 +527,108 @@ public:
 		}
 
 	}
+
+
+/****************************************************************
+
+   FUNCTION:   navigate
+
+   ARGUMENTS:  start_point cell (x,y) to start at
+
+   RETURNS:    nothing
+
+   NOTES:     uses djikstras algorithm to find the distance from
+   			  one cell to all the others and updates their distance
+
+****************************************************************/
+   	void navigate(int x, int y)
+   	{
+   		
+   		int dist=0;
+   		stack path(&grid[y][x]);
+   		//Cell *origin = path.top();
+
+   		//should only end when stack it gone
+   		//so stack does not need to have delete functions...
+   		while(path.get_size() >0)
+   		{
+   			
+   			path.top()->set_dist(dist);
+   			if(finished(path.top()))
+   			{
+   				path.pop();
+   				dist--;
+
+   			}
+   			else
+   			{
+   				path.push(path.top()->get_next());
+   				dist++;
+   			}
+
+   		}
+   		
+   	}
+
+   	void label_path(Cell *start, Cell *finish)
+   	{
+   		
+   		navigate(start->get_col(), start->get_row());
+
+   		stack path(finish);
+   		while(path.top() != start)
+   		{
+
+   			path.push(path.top()->get_shortest());
+   			path.top()->display=" x ";
+   		}
+   		start->display=" S ";
+   		finish->display=" E ";
+   	
+
+
+   	}
+
+void solve()
+{
+
+	
+	//navigate(0,0);
+	label_path(&grid[0][0],&grid[0][columns-1]);
+
+}
+/****************************************************************
+
+   FUNCTION:   finished
+
+   ARGUMENTS:  Cell* test
+
+   RETURNS:    whether all surrounding linked cells have been visited
+
+   NOTES:     may be an issue
+****************************************************************/
+   	bool finished(Cell* test)
+   	{
+   		bool done = true;
+   		for(int i=0; i<4; i++)
+   		{
+   			if(test->surround[i]!=NULL && test->links[i])
+   			{
+   				done = test->surround[i]->is_visited();
+   			}
+   			if(!done)
+   			{
+   				break;
+   			}
+
+   		}
+   		return done;
+
+   	}
 	
 
 } ;
+
  /****************************************************************
 
    FUNCTION:   binary_create
@@ -444,8 +701,8 @@ void side_wander(Map &todo)
 		for(int cur_cell=0; cur_cell<col_tot;cur_cell++)
 		{
 			
-			at_east=(Row[cur_cell]->surround[1]==NULL);//is it at the end?
-			at_south=(Row[cur_cell]->surround[2]==NULL);//is it at the bottom?
+			at_east=(Row[cur_cell]->get_neighbor(EAST)==NULL);//is it at the end?
+			at_south=(Row[cur_cell]->get_neighbor(SOUTH)==NULL);//is it at the bottom?
 			close_out = (at_east)|| (rand()%2==0);
 			
 			if(close_out && (!at_south))//dont erase things south on the last row :o
@@ -476,20 +733,21 @@ void side_wander(Map &todo)
 //simple driver
 int main(int argc, char *argv[])
 {
-	int x = 5;
-	int y = 5;
+	int x = 4;
+	int y = 4;
 	if(argc >=3)
 	{
 		x = atoi(argv[1]);
 		y = atoi(argv[2]);
 	}
 	Map maze(y,x);
-	binary_create(maze);
-	maze.print();
-	maze.reset();
-	maze.print();
+	//binary_create(maze);
+	//maze.print();
+	//maze.reset();
+	//maze.print();
 	
 	side_wander(maze);
+	maze.solve();
 	maze.print();
 
 	return 0;
