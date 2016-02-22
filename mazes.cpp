@@ -14,6 +14,7 @@ enum DIRECTION{NORTH=0,EAST=1,SOUTH=2,WEST=3};
 #include <stdlib.h>
 #include <time.h>
 #include <string>
+#include <iomanip>
 
 using namespace std;
 
@@ -189,6 +190,16 @@ public:
 		return false;
 
 	}
+	/****************************************************************
+
+   FUNCTION:   get_next
+
+   ARGUMENTS:  none
+
+   RETURNS:    next unvisited linked cell
+
+   NOTES:    maybe not the place?
+****************************************************************/
 	Cell* get_next()
 	{
 		for(int i=0;i<4;i++)
@@ -203,6 +214,16 @@ public:
 		
 		return NULL;
 	}
+	/****************************************************************
+
+   FUNCTION:   unlink_all
+
+   ARGUMENTS:  none
+
+   RETURNS:    
+
+   NOTES:     resets link stats and distance
+****************************************************************/
 	void unlink_all()//only for reset !:o
 	{
 		for (int i=0; i<4; i++)
@@ -217,6 +238,18 @@ public:
 
 	};
 
+
+/****************************************************************
+
+   CLASS::   stack
+
+   ARGUMENTS:  Cell* test
+
+   RETURNS:    
+
+   NOTES:     stack based on Cell data type
+   			  all standard functions implimented no comments
+****************************************************************/
 class stack
 {
 
@@ -258,13 +291,15 @@ public:
 		size++;
 
 	}
-	void pop()
+	Cell* pop()
 	{
+		Cell* t=head->value;
 		node* temp=head->next;
 		delete head;//should work just fine with no issues
 		head= temp;
 		temp=NULL;
 		size--;
+		return t;
 
 	}
 	Cell* top()
@@ -470,6 +505,11 @@ public:
 	void print()
 	{
 		string top,bottom,body,east_b,south_b;
+		for(int i=0; i<columns; i++)
+		{
+			cout<<setw(4)<<i;
+		}
+		cout<<endl;
 		cout<<"+";
 		body="   ";
 		
@@ -495,7 +535,7 @@ public:
 				bottom+="+";
 
 			}
-			cout<<top<<endl<<bottom<<endl;
+			cout<<top<<" "<<j<<endl<<bottom<<endl;
 			
 
 		}
@@ -503,7 +543,7 @@ public:
 
 	}
 
-	/****************************************************************
+/****************************************************************
 
    FUNCTION:   reset
 
@@ -521,6 +561,7 @@ public:
 			for(int j=0; j<columns; j++)
 			{
 				grid[i][j].unlink_all();
+				grid[i][j].display="   ";
 			}
 
 
@@ -541,12 +582,14 @@ public:
    			  one cell to all the others and updates their distance
 
 ****************************************************************/
-   	void navigate(int x, int y)
+   	Cell* navigate(int x, int y)
    	{
    		
    		int dist=0;
+   		int max_dist=0;
+   		Cell * max;
    		stack path(&grid[y][x]);
-   		//Cell *origin = path.top();
+   		max=path.top();
 
    		//should only end when stack it gone
    		//so stack does not need to have delete functions...
@@ -564,37 +607,64 @@ public:
    			{
    				path.push(path.top()->get_next());
    				dist++;
+   				if(dist>max_dist)
+   				{
+   					max_dist=dist;
+   					max=path.top();
+   				}
    			}
-
+   			
    		}
-   		
+   		cout<<max_dist<<" :: "<<endl;
+   		return max;
    	}
+   	/****************************************************************
 
+   FUNCTION:   label path
+
+   ARGUMENTS:  start and end cell pointers
+
+   RETURNS:    
+
+   NOTES:    first labels all cells with distance from start
+   			
+****************************************************************/
    	void label_path(Cell *start, Cell *finish)
    	{
    		
-   		navigate(start->get_col(), start->get_row());
-
-   		stack path(finish);
-   		while(path.top() != start)
+   		//navigate(start->get_col(), start->get_row());
+   		
+   		finish->display=" E ";
+   		while(finish != start)
    		{
-
-   			path.push(path.top()->get_shortest());
-   			path.top()->display=" x ";
+   			finish=finish->get_shortest();
+   			finish->display=" x ";
    		}
    		start->display=" S ";
-   		finish->display=" E ";
+   		
+   		
    	
 
 
    	}
+/****************************************************************
 
-void solve()
+   FUNCTION:   solve
+
+   ARGUMENTS:  start and end cell coordinates
+
+   RETURNS:    
+
+   NOTES:     calls label_path
+****************************************************************/
+
+
+void solve(int x, int y)
 {
 
-	
-	//navigate(0,0);
-	label_path(&grid[0][0],&grid[0][columns-1]);
+	Cell* finish;
+	finish = navigate(x,y);
+	label_path(&grid[y][x],finish);
 
 }
 /****************************************************************
@@ -675,7 +745,7 @@ void binary_create(Map & todo)
    RETURNS:    nothing
 
    NOTES:      takes an unconnected map and creates a maze using
-   				the side wander method
+   				the side winder method
 ****************************************************************/
 
 void side_wander(Map &todo)
@@ -730,11 +800,14 @@ void side_wander(Map &todo)
 }
 
 
+
+
 //simple driver
 int main(int argc, char *argv[])
 {
 	int x = 4;
 	int y = 4;
+	int w,z;
 	if(argc >=3)
 	{
 		x = atoi(argv[1]);
@@ -747,7 +820,25 @@ int main(int argc, char *argv[])
 	//maze.print();
 	
 	side_wander(maze);
-	maze.solve();
+	maze.print();
+	w=x/2;
+	z=y/2;
+	x=0;
+	y=0;
+	
+	cout<<"finding longest path"<<endl;
+	cout<<"choose path to navigate? y/n"<<endl;
+	if(cin.peek()=='y')
+	{
+		cin.ignore(INT_MAX,'\n');
+		cout<<"find path between? /n enter start coordiants x y : "<<endl;
+		cin>>x;
+		cin>>y;
+		
+	}
+
+
+	maze.solve(x,y);
 	maze.print();
 
 	return 0;
